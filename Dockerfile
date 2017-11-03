@@ -24,12 +24,24 @@ RUN echo 'if (interactive()) { \
   suppressMessages(require(testthat)) \
 }' >> /usr/local/lib/R/etc/Rprofile.site
 
+#tools
+RUN apt-get install -qqy libfftw3-3 libfftw3-dev libtiff5-dev
+
+COPY cytovasTools_0.1.0.tar.gz /tmp/cytovasTools.tar.gz
+RUN R -q -e 'source("http://bioconductor.org/biocLite.R");biocLite("EBImage");biocLite("flowFP");'
+RUN tar xzf /tmp/cytovasTools.tar.gz
+RUN R -q -e 'devtools::install("cytovasTools",dependencies=TRUE)'
+
+
 #ffp
-COPY flowFramePlus.tar.gz /tmp/flowFramePlus.tar.gz
+#COPY flowFramePlus.tar.gz /tmp/flowFramePlus.tar.gz
+COPY flowFramePlus_0.1.0.tar.gz /tmp/flowFramePlus.tar.gz
 # Install the current package
 RUN tar xzf /tmp/flowFramePlus.tar.gz
 RUN R -q -e 'source("http://bioconductor.org/biocLite.R");biocLite("flowCore");biocLite("flowViz");'
 RUN R -q -e 'devtools::install("flowFramePlus",dependencies=TRUE)'
+
+
 
 #bt
 COPY batchTitration_0.1.0.tar.gz /tmp/batchTitration.tar.gz

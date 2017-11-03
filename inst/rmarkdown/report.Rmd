@@ -1,0 +1,33 @@
+---
+title: "Titration Analysis"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::readthedown:
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(flowFramePlus)
+```
+
+## Files
+
+The following titration FCS files were supplied:
+
+```{r titrationfiles}
+titration_files<-read.table("/tmp/file_manifest.txt",header=TRUE)
+knitr::kable(titration_files)
+```
+
+## Plots
+
+```{r pressure, echo=FALSE}
+files<-dir(path="/tmp/",pattern = "*.fcs",recursive = FALSE,include.dirs = FALSE,full.names = TRUE)
+
+```
+

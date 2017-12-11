@@ -1,0 +1,33 @@
+from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+S3 = S3RemoteProvider()
+#S3 = S3RemoteProvider(access_key_id="MYACCESSKEY", secret_access_key="MYSECRET")
+
+rule all:
+    input:
+        S3.remote("bucket-name/file.txt")
+
+rule titer_check:
+    input: yaml = '/tmp/config.yaml'
+    output: html = 'titercheck.html'
+    params: projdir = "/tmp"
+    run: 
+        R("""
+        PROJECT_HOME<-"{params.projdir}";
+        path.out<-"{params.projdir}/fastqc/summary";
+        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
+        ezknitr::ezknit(file="reports/summary_fastqc.Rmd",out_dir=PROJECT_HOME)
+        rmarkdown::render('summary_fastqc.md', output_format='html_document')
+        """)
+
+rule fastqc_summary:
+    input: yaml = 'summary_fastqc.yaml'
+    output: html = 'summary_fastqc.html'
+    params: projdir = config['projdir']
+    run: 
+        R("""
+        PROJECT_HOME<-"{params.projdir}";
+        path.out<-"{params.projdir}/fastqc/summary";
+        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
+        ezknitr::ezknit(file="reports/summary_fastqc.Rmd",out_dir=PROJECT_HOME)
+        rmarkdown::render('summary_fastqc.md', output_format='html_document')
+        """)

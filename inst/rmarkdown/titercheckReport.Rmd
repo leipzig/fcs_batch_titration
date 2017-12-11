@@ -1,0 +1,31 @@
+---
+title: "EV Titer Check"
+author: "Jeremy Leipzig"
+date: "12/7/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(cytovasTools)
+```
+
+## Titer Check Table
+
+The titer check is designed to detect two events:
+- Accumulation of antibody 
+```{r cars}
+# assume they are interested in any parameter that has an antibody
+yaml.load_file("config.yaml")
+
+```
+
+## Longitudinal plot
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

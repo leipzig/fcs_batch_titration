@@ -1,33 +1,33 @@
 from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+import yaml
 S3 = S3RemoteProvider()
-#S3 = S3RemoteProvider(access_key_id="MYACCESSKEY", secret_access_key="MYSECRET")
+import boto3
 
-rule all:
-    input:
-        S3.remote("bucket-name/file.txt")
+def s3client():
+    return boto3.client('s3',
+        aws_access_key_id = os.environ['aws_access_key_id'],
+        aws_secret_access_key = os.environ['aws_secret_access_key']
+    )
+#                  aws_session_token = os.environ['aws_security_token']
+
+s3_boto3 = s3client()
+with open('config.yaml', 'wb') as data:
+    s3_boto3.download_fileobj('cytovas-batch-titration-configs', 'config.yaml', data)
+
+configfile: "config.yaml"
 
 rule titer_check:
-    input: yaml = '/tmp/config.yaml'
-    output: html = 'titercheck.html'
-    params: projdir = "/tmp"
+    input: titercheck = 'batchTitration/inst/rmarkdown/titercheckReport.Rmd',
+           titration = 'batchTitration/inst/rmarkdown/titrationReport.Rmd',
+           reference = S3.remote("cytovas-instrument-files/"+config["reference_files"])
+    output: html = S3.remote("cytovas-instrument-files/"+config["output_file"])
+    params: projdir = "/tmp/", report_type=config["analysis_type"]
     run: 
         R("""
         PROJECT_HOME<-"{params.projdir}";
-        path.out<-"{params.projdir}/fastqc/summary";
-        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
-        ezknitr::ezknit(file="reports/summary_fastqc.Rmd",out_dir=PROJECT_HOME)
-        rmarkdown::render('summary_fastqc.md', output_format='html_document')
-        """)
-
-rule fastqc_summary:
-    input: yaml = 'summary_fastqc.yaml'
-    output: html = 'summary_fastqc.html'
-    params: projdir = config['projdir']
-    run: 
-        R("""
-        PROJECT_HOME<-"{params.projdir}";
-        path.out<-"{params.projdir}/fastqc/summary";
-        fn.yaml<-"{params.projdir}/summary_fastqc.yaml";
-        ezknitr::ezknit(file="reports/summary_fastqc.Rmd",out_dir=PROJECT_HOME)
-        rmarkdown::render('summary_fastqc.md', output_format='html_document')
+        rmd<-list(titer_check="{input.titercheck}",titration="{input.titration}")
+        md<-list(titer_check="{params.projdir}/titercheckReport.md",titration="{params.projdir}/titrationReport.md")
+        
+        ezknitr::ezknit(file=rmd[[{params.report_type}]],out_dir=PROJECT_HOME)
+        rmarkdown::render(md[[{params.report_type}]], output_format='html_document')
         """)

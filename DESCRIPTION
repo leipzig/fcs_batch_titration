@@ -1,10 +1,10 @@
 Package: batchTitration
 Type: Package
-Title: Scripts and related Dockerfile for automated antibody titration analysis
-Version: 0.1.0
+Title: Scripts and related Dockerfile for automated antibody titration analysis and titration checks
+Version: 0.1.1
 Author: Jeremy Leipzig
 Maintainer: <leipzig@cytovas.com>
-Description: batchTitration accepts one or more FCS files and computes stain index, generates plots, html output
+Description: batchTitration accepts one or more FCS files and computes stain index or titration width, generates plots, html output
 License: file LICENSE
 LazyData: TRUE
 Imports: flowFramePlus, rmarkdown, rmdformats

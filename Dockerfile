@@ -6,6 +6,7 @@ MAINTAINER "Jeremy Leipzig" leipzig@cytovas.com
 RUN apt-get -qq update
 RUN apt-get install -qqy python3-setuptools python3-docutils python3-flask
 RUN easy_install3 snakemake
+RUN easy_install3 boto
 
 # Install biocInstaller
 RUN R -q -e 'source("http://bioconductor.org/biocLite.R")'
@@ -42,9 +43,13 @@ RUN R -q -e 'source("http://bioconductor.org/biocLite.R");biocLite("flowCore");b
 RUN R -q -e 'devtools::install("flowFramePlus",dependencies=TRUE)'
 
 
-
 #bt
-COPY batchTitration_0.1.0.tar.gz /tmp/batchTitration.tar.gz
+COPY batchTitration_0.1.1.tar.gz /tmp/batchTitration.tar.gz
 RUN tar xzf /tmp/batchTitration.tar.gz
 RUN R -q -e 'devtools::install("batchTitration",dependencies=TRUE)'
 
+#snakemake
+COPY batchTitration/inst/snakemake/Snakefile /Snakefile
+
+#entry
+ENTRYPOINT ["snakemake"]

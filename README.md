@@ -16,6 +16,18 @@ docker tag cytovas-batch-titration:latest 205853417430.dkr.ecr.us-east-1.amazona
 docker push 205853417430.dkr.ecr.us-east-1.amazonaws.com/cytovas-batch-titration:latest
 ```
 
+As an aside, to clean up docker
+```
+docker ps -aq -f status=exited
+docker ps -aq --no-trunc | xargs docker rm
+docker images -q --filter dangling=true | xargs docker rmi
+```
+
+To test locally and override snakemake
+```
+docker run -it --entrypoint "/bin/bash" -e AWS_ACCESS_KEY_ID="your access key" -e AWS_SECRET_ACCESS_KEY="your secret" cytovas-batch-titration
+```
+
 # To run from Amazon ECR
 ```
 aws ecr get-login --no-include-email --region us-east-1
@@ -30,3 +42,4 @@ You can then
 ```
 library("batchTitration")
 ```
+

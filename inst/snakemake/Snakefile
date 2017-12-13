@@ -1,16 +1,19 @@
 from snakemake.remote.S3 import RemoteProvider as S3RemoteProvider
+from snakemake.utils import R
 import yaml
-S3 = S3RemoteProvider()
 import boto3
+
 
 def s3client():
     return boto3.client('s3',
-        aws_access_key_id = os.environ['aws_access_key_id'],
-        aws_secret_access_key = os.environ['aws_secret_access_key']
+        aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
     )
-#                  aws_session_token = os.environ['aws_security_token']
 
+#snakemake still using boto2
+s3_boto2 = S3RemoteProvider()
 s3_boto3 = s3client()
+
 with open('config.yaml', 'wb') as data:
     s3_boto3.download_fileobj('cytovas-batch-titration-configs', 'config.yaml', data)
 
@@ -19,15 +22,18 @@ configfile: "config.yaml"
 rule titer_check:
     input: titercheck = 'batchTitration/inst/rmarkdown/titercheckReport.Rmd',
            titration = 'batchTitration/inst/rmarkdown/titrationReport.Rmd',
-           reference = S3.remote("cytovas-instrument-files/"+config["reference_files"])
-    output: html = S3.remote("cytovas-instrument-files/"+config["output_file"])
+           reference = s3_boto2.remote("cytovas-instrument-files/"+config["reference_files"])
+    output: html = s3_boto2.remote("cytovas-instrument-files/"+config["output_file"])
     params: projdir = "/tmp/", report_type=config["analysis_type"]
     run: 
         R("""
         PROJECT_HOME<-"{params.projdir}";
         rmd<-list(titer_check="{input.titercheck}",titration="{input.titration}")
-        md<-list(titer_check="{params.projdir}/titercheckReport.md",titration="{params.projdir}/titrationReport.md")
+        md<-list(titer_check="{params.projdir}titercheckReport.md",titration="{params.projdir}titrationReport.md")
         
-        ezknitr::ezknit(file=rmd[[{params.report_type}]],out_dir=PROJECT_HOME)
-        rmarkdown::render(md[[{params.report_type}]], output_format='html_document')
+        ezknitr::ezknit(file=rmd[["{params.report_type}"]],out_dir=PROJECT_HOME)
         """)
+        html={'titer_check':'titercheckReport.html','titration':'titrationReport.html'}
+        os.rename(params.projdir+'/'+html[params.report_type],output.html)
+
+#rmarkdown::render(md[["{params.report_type}"]], output_format='html_document',output_file="{output.html}")

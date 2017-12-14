@@ -43,3 +43,7 @@ You can then
 library("batchTitration")
 ```
 
+To queue a AWS batch job. The `CONFIG_KEY` refers to a config file in the titration config bucket.
+```
+aws batch submit-job --job-name example --job-queue fcs-batch-queue  --job-definition batch_titration_or_check --container-overrides '{"environment":[{"name":"CONFIG_KEY","value":"40cfa138-b869-4a16-a854-e50636a5e43e.yaml"}]}'
+```

@@ -3,6 +3,9 @@ from snakemake.utils import R
 import yaml
 import boto3
 
+CONFIG_BUCKET = 'cytovas-batch-titration-configs'
+FCS_BUCKET = 'cytovas-instrument-files'
+REPORT_BUCKET = 'cytovas-reports' 
 
 def s3client():
     return boto3.client('s3',
@@ -15,15 +18,15 @@ s3_boto2 = S3RemoteProvider()
 s3_boto3 = s3client()
 
 with open('config.yaml', 'wb') as data:
-    s3_boto3.download_fileobj('cytovas-batch-titration-configs', 'config.yaml', data)
+    s3_boto3.download_fileobj(CONFIG_BUCKET, os.environ['CONFIG_KEY'], data)
 
 configfile: "config.yaml"
 
 rule titer_check:
     input: titercheck = 'batchTitration/inst/rmarkdown/titercheckReport.Rmd',
            titration = 'batchTitration/inst/rmarkdown/titrationReport.Rmd',
-           reference = s3_boto2.remote("cytovas-instrument-files/"+config["reference_files"])
-    output: html = s3_boto2.remote("cytovas-instrument-files/"+config["output_file"])
+           reference = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"])
+    output: html = s3_boto2.remote(REPORT_BUCKET+"/"+config["output_file"])
     params: projdir = "/tmp/", report_type=config["analysis_type"]
     run: 
         R("""

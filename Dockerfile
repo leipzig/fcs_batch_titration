@@ -33,11 +33,11 @@ RUN conda install -y -c conda-forge readline=6.2
 RUN conda install -y libgfortran
 
 #not sure why bioconductor insists on gtar
-RUN conda install -c conda-forge tar
+RUN conda install -y -c conda-forge tar
 RUN ln -s /bin/tar /bin/gtar
 
 #this is for the extra stuff we do
-RUN conda install -c anaconda boto3
+RUN conda install -y -c anaconda boto3
 
 
 #https://conda-forge.org/docs/conda-forge_gotchas.html#using-multiple-channels

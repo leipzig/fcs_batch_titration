@@ -27,7 +27,7 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
   }
   tmp = flowFramePlus$new(Subset(ffp$ffOrig, rectangleGate("SSC-A" = ssc.limit)))
   
-  tmp$plot(plist=c("695/40 Blue-A","SSC-A"))
+  #ttmp$plot(plist=c("695/40 Blue-A","SSC-A"))
 
   
   

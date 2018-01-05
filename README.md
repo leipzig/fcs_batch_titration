@@ -47,3 +47,13 @@ To queue a AWS batch job. The `CONFIG_KEY` refers to a config file in the titrat
 ```
 aws batch submit-job --job-name example --job-queue fcs-batch-queue  --job-definition batch_titration_or_check --container-overrides '{"environment":[{"name":"CONFIG_KEY","value":"40cfa138-b869-4a16-a854-e50636a5e43e.yaml"}]}'
 ```
+
+List the jobs:
+```
+aws batch list-jobs --job-queue arn:aws:batch:us-east-1:205853417430:job-queue/fcs-batch-queue
+```
+
+To monitor a job
+```
+aws batch describe-jobs --jobs 7bcd65c8-a74d-4c26-a1aa-a5bb716b4963
+```

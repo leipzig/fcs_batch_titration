@@ -18,10 +18,14 @@ The titer check is designed to detect two events:
 # assume they are interested in any parameter that has an antibody
 yaml.load_file("config.yaml")
 
+
 ```
 
 ## Longitudinal plot
 
+Plot signal on y and flourescent on x
+
+To estiamte the width of the background, take a horizontal strip
 You can also embed plots, for example:
 
 ```{r pressure, echo=FALSE}

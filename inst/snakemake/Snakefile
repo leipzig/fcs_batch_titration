@@ -25,12 +25,21 @@ configfile: "config.yaml"
 rule titer_check:
     input: titercheck = 'batchTitration/inst/rmarkdown/titercheckReport.Rmd',
            titration = 'batchTitration/inst/rmarkdown/titrationReport.Rmd',
-           reference = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"])
+           AF647 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["AF647"],keep_local=True),
+           APC_H7 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["APC_H7"],keep_local=True),
+           APC_R700 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["APC_R700"],keep_local=True),
+           PE = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["PE"],keep_local=True),
+           PE_Cy7 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["PE_Cy7"],keep_local=True),
+           PerCP_Cy55 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["PerCP_Cy55"],keep_local=True),
+           V450 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["V450"],keep_local=True),
+           V500 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["V500"],keep_local=True),
+           unstained = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["unstained"],keep_local=True),
     output: html = s3_boto2.remote(REPORT_BUCKET+"/"+config["output_file"])
-    params: projdir = "/tmp/", report_type=config["analysis_type"]
+    params: projdir = "./", report_type=config["analysis_type"]
     run: 
         R("""
         PROJECT_HOME<-"{params.projdir}";
+
         rmd<-list(titer_check="{input.titercheck}",titration="{input.titration}")
         md<-list(titer_check="{params.projdir}titercheckReport.md",titration="{params.projdir}titrationReport.md")
         

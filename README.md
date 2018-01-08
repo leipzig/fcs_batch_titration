@@ -25,7 +25,7 @@ docker images -q --filter dangling=true | xargs docker rmi
 
 To test locally and override snakemake
 ```
-docker run -it --entrypoint "/bin/bash" -e AWS_ACCESS_KEY_ID="your access key" -e AWS_SECRET_ACCESS_KEY="your secret" cytovas-batch-titration
+docker run -it --entrypoint "/bin/bash" -e AWS_ACCESS_KEY_ID="your access key" -e AWS_SECRET_ACCESS_KEY="your secret" -e CONFIG_KEY="40cfa138-b869-4a16-a854-e50636a5e43e.yaml" cytovas-batch-titration
 ```
 
 # To run from Amazon ECR

@@ -50,7 +50,7 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
   pgate = list()
   ngate = list()
   for (i in 1:length(nona_parameters)) {
-    p = colnames(ff)[nona_parameters[i]]
+    p = colnames(ffp$ffOrig)[nona_parameters[i]]
     gexpr = paste("list('", p, "'=c(", thresh[i], ", Inf))", sep = "")
     pgate[[i]] = flowCore::rectangleGate(filterId = paste(p, "+", sep = ""), .gate = eval(parse(text = gexpr)))
     ngexpr = paste("list('", p, "'=c(-Inf, ", thresh[i], "))", sep = "")
@@ -59,7 +59,7 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
   
   # calculate false positives
   if (verbose) {cat("false pos... ")}
-  ffg = Subset(ff, flowCore::rectangleGate("SSC-A" = c(-Inf, size.thresh)))
+  ffg = Subset(ffp$ffOrig, flowCore::rectangleGate("SSC-A" = c(-Inf, size.thresh)))
   res_fp = remove.background.events(ffg, pgate, verbose = verbose)
   ffg = res_fp$ff
   
@@ -72,8 +72,12 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
     layout(laymat)
     par(mar = c(2, 2.5, 3, 1))
     for (i in 1:length(nona_parameters)) {
-      p = colnames(ff)[nona_parameters[i]]
-      pplot(ff, c(p, "SSC-A"), xlim = c(-.5, bx(5000)), main = p)
+      
+      #will contain name and description from the one antibody
+      plottitle = paste(colnames(ffp$ffOrig)[nona_parameters[i]],parameters(ffp$ffOrig)[nona_parameters[i]]$desc)
+      #pplot(ff, c(p, "SSC-A"), xlim = c(-.5, flowFramePlus:::bx(5000)), main = p)
+      #ffp$plot()
+      ffp$plot(plist=c(p,"SSC-A"), xlim = c(-.5, flowFramePlus:::bx(5000)), main = plottitle)
       left.edge = -2
       polygon(x = c(left.edge,thresh[i], 
                     thresh[i], 
@@ -81,20 +85,20 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
               y = c(0, 0, 5.4, 5.4), 
               col = '#0000000F')   # negative for param
       polygon(x = c(thresh[i], 
-                    biexp.transform(262143), 
-                    biexp.transform(262143), 
+                    flowFramePlus:::biexp.transform(262143), 
+                    flowFramePlus:::biexp.transform(262143), 
                     thresh[i]), 
-              y = c(biexp.transform(263000), 
-                    biexp.transform(263000), 
+              y = c(flowFramePlus:::biexp.transform(263000), 
+                    flowFramePlus:::biexp.transform(263000), 
                     size.thresh, size.thresh), 
               col = '#0000000F')  # size
-      yline(ssc.limit, lty = 'dotdash')
+      fields:::yline(ssc.limit, lty = 'dotdash')
       # plot the kde's
-      tkde = normalize_kde(kde[[i]])
+      tkde = cytovasTools:::normalize_kde(kde[[i]])
       lines(tkde$x, 2.5 * tkde$y)
-      tgde = normalize_kde(gde[[i]])
+      tgde = cytovasTools:::normalize_kde(gde[[i]])
       lines(tgde$x, 2.5 * tgde$y, col = 'red')
-      text(bx(300), bx(300), labels = sprintf("fp = %d (%.3f%%)", res_fp$n_fp[i], 100 * res_fp$n_fp[i] / res_fp$n_total), pos = 4, cex = 2)
+      text(flowFramePlus:::bx(300), flowFramePlus:::bx(300), labels = sprintf("fp = %d (%.3f%%)", res_fp$n_fp[i], 100 * res_fp$n_fp[i] / res_fp$n_total), pos = 4, cex = 2)
       #       points(exprs(ffg)[,names(thresh)[i]], 
       #              exprs(ffg)[,"SSC-A"], 
       #              pch = 20, 
@@ -111,7 +115,7 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
     }
     
     # clean up memory
-    rm(ff, tmp)
+    rm(ffp, tmp)
   }
   return(list(thresh = thresh, kde = kde, pgate = pgate, ngate = ngate, fp = ffg))
 }

@@ -16,8 +16,9 @@ The titer check is designed to detect two events:
 - Accumulation of antibody 
 ```{r cars}
 # assume they are interested in any parameter that has an antibody
-yaml.load_file("config.yaml")
+config<-yaml.load_file("config.yaml")
 
+AF647<-flowFramePlus$new(paste("cytovas-instrument-files",config$reference_files$AF647,sep="/"))
 
 ```
 

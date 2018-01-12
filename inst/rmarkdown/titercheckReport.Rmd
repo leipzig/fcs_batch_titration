@@ -8,18 +8,89 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(cytovasTools)
+library(flowFramePlus)
+library(yaml)
 ```
 
-## Titer Check Table
+## Titer Check
 
 The titer check is designed to detect two events:
-- Accumulation of antibody 
-```{r cars}
+- Depletion of antibody 
+- Accumulation of rocks
+
+```{r depletionSetup}
 # assume they are interested in any parameter that has an antibody
 config<-yaml.load_file("config.yaml")
+flowFrames<-list('ref'=list(),'sub'=list())
+thresholdsObjects<-list('ref'=list(),'sub'=list())
+thresholds<-list('ref'=list(),'sub'=list())
+detectors<-list('ref'=list(),'sub'=list())
+uuids<-list('ref'=list(),'sub'=list())
+shortnames<-list('ref'=list(),'colored'=list())
 
-AF647<-flowFramePlus$new(paste("cytovas-instrument-files",config$reference_files$AF647,sep="/"))
+#[1] "AF647"      "APC_H7"     "APC_R700"   "PE"         "PE_Cy7"     "PerCP_Cy55" "V450"       "V500"       "unstained" 
+shortnames[['ref']]<-names(config$reference_files)
+uuids[['ref']]<-as.character(config$reference_files[names(config$reference_files)])
 
+filelists<-list('ref'=list(),'sub'=list())
+filelists[['ref']]<-config$reference_files
+filelists[['sub']]<-config$subsequent_files
+
+extractFcsMetadata<-function(fcsuuid){
+  ffp<-flowFramePlus$new(paste("cytovas-instrument-files",fcsuuid,sep="/"))
+  meta<-description(ffp$ffOrig)[c('EXPERIMENT NAME','$FIL','$DATE','EXPORT TIME','GUID')]
+  names(meta)<-c("expName","fileName","date","exportTime","GUID")
+  return(meta)
+}
+
+#the subsequent files are not named by anything useful, so extract their date of creation
+names(filelists[['sub']])<-paste("sub",sapply(lapply(filelists[['sub']],extractFcsMetadata),'[[','date'),sep='_')
+
+
+#a cohort refers to the reference(ref) or subsequent(sub) files
+getThresholds<-function(cohort){
+  for(shortname in names(filelists[[cohort]])){
+    cat(shortname,"\n")
+    flowFrames[[cohort]][[shortname]]<-flowFramePlus$new(paste("cytovas-instrument-files",filelists[[cohort]][[shortname]],sep="/"))
+    isUnstained<-(shortname=='unstained')
+    thresholdsObjects[[cohort]][[shortname]]<<-thresholds.from.triton(flowFrames[[cohort]][[shortname]],show=FALSE,unstained=isUnstained)
+    thresholds[[cohort]][[shortname]]<<-thresholdsObjects[[cohort]][[shortname]][['thresh']]
+    detectors[[cohort]][[shortname]]<<-thresholdsObjects[[cohort]][[shortname]][['detectors']]
+  }
+}
+
+getThresholds('ref')
+
+getThresholds('sub')
+
+#[1] "670/30 Red-A"    "780/60 Red-A"    "712/21 Red-A"    "575/25 Blue-A"   "780/60 Blue-A"   "695/40 Blue-A"   "450/50 Violet-A" "525/50 Violet-A"
+colors<-as.character(detectors[['ref']][names(detectors[['ref']])!="unstained"])
+
+#[1] "AF647"      "APC_H7"     "APC_R700"   "PE"         "PE_Cy7"     "PerCP_Cy55" "V450"       "V500"   
+shortnames['colored']<-names(detectors[['ref']][names(detectors[['ref']])!="unstained"])
+
+for(subsequent in names(config$subsequent)){
+  cat(ref)
+  flowFrames$ref[[ref]]<-flowFramePlus$new(paste("cytovas-instrument-files",config$reference_files[[ref]],sep="/"))
+  isUnstained<-(ref=='unstained')
+  thresholdsObjects$ref[[ref]]<-thresholds.from.triton(flowFrames$ref[[ref]],show=FALSE,unstained=isUnstained)
+  thresholds$ref[[ref]]<-thresholdsObjects$ref[[ref]][['thresh']]
+  detectors$ref[[ref]]<-thresholdsObjects$ref[[ref]][['detectors']]
+}
+
+
+```
+
+## Conjugate table
+```{r depletion}
+knitr::kable(col.names=shortnames[['colored']],rbind(colors))
+```
+
+## Depletion analysis
+```{r depletion}
+knitr::kable(col.names=c("sample",names(refdetectors[names(refdetectors)!="unstained"])),
+             as.data.frame(rbind(cbind("unstained",do.call(rbind,list(as.numeric(refthresholds$unstained[colors])))),
+                                 cbind("single-stained",do.call(rbind,list(as.numeric(refthresholds[shortnames])))))))
 ```
 
 ## Longitudinal plot

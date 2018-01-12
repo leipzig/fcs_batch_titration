@@ -1,6 +1,6 @@
 library(cytovasTools)
 library(flowFramePlus)
-
+library(flowCore)
 
 # we observed that the triton control has a false positive low-ssc tail on parameters 8 and 15.  
 # There is also a false positive cloud on parameters 7 and 10.  If we use SSC-A between 8000 
@@ -11,11 +11,21 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
                                   size.thresh=1e5, 
                                   cumm.prob=0.9999, 
                                   show=FALSE, show.fn="", 
-                                  verbose=FALSE, schema = "EVENTS") {
+                                  verbose=FALSE, schema = "EVENTS", unstained=FALSE) {
   
-  #the non-null parameters have an antibody
-  nona_parameters<-which(!is.na(parameters(ffp$ffOrig)$desc))
-
+  if(unstained==TRUE){
+    #in this case there are no antibodies, so desc will be <NA>
+    #use 7-16
+    nona_parameters<-parameters
+  }else{
+    #the non-null parameters have an antibody
+    nona_parameters<-which(!is.na(parameters(ffp$ffOrig)$desc))
+  }
+  
+  #a vector of the colors named by the non-null antibodies
+  detectors<-colnames(ffp$ffOrig)[nona_parameters]
+  names(detectors)<-parameters(ffp$ffOrig)[nona_parameters]$desc
+  
   ssc.limit.tx=flowFramePlus:::bx(ssc.limit)
   size.thresh.tx = flowFramePlus:::bx(size.thresh)
   
@@ -26,31 +36,37 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
     cat(tdiff, "Sec... ")
   }
   tmp = flowFramePlus$new(Subset(ffp$ffOrig, rectangleGate("SSC-A" = ssc.limit)))
-  
-  #ttmp$plot(plist=c("695/40 Blue-A","SSC-A"))
 
-  
-  
   thresh = vector('numeric')
   kde = list()
   gde = list()  # the gaussian derivation
   if (verbose) {cat("kde... ")}
   for (i in 1:length(nona_parameters)) {
     pname = colnames(tmp$ffTxed)[nona_parameters[i]]
+    
     kde[[i]] = KernSmooth::bkde(exprs(tmp$ffTxed)[,pname], bandwidth = 0.02, gridsize = 4001)
+    
+    #fit the gaussian at the base to ignore any extremely long tails
     gde[[i]] = cytovasTools:::fit_gaussian_base(kde[[i]], height = 0.005)
+    
+    #thresh is the x-axis that holds cumm.prob of the distriubtion (biexp transformed)
     thresh[i] = cytovasTools:::cumm_prob_thresh(gde[[i]], cumm.prob)
   }
   
-  names(thresh) = colnames(tmp)[nona_parameters]
+  #is there any particular reason we use tmp here?
+  names(thresh) = colnames(tmp$ffOrig)[nona_parameters]
   #   bzone = 0.04
   #   thresh = thresh + bzone
   
   if (verbose) {cat("gates... ")}
   pgate = list()
   ngate = list()
+  
+  #should we be plotting
+  thing_to_plot<-ffp
+  
   for (i in 1:length(nona_parameters)) {
-    p = colnames(ffp$ffOrig)[nona_parameters[i]]
+    p = colnames(thing_to_plot$ffOrig)[nona_parameters[i]]
     gexpr = paste("list('", p, "'=c(", thresh[i], ", Inf))", sep = "")
     pgate[[i]] = flowCore::rectangleGate(filterId = paste(p, "+", sep = ""), .gate = eval(parse(text = gexpr)))
     ngexpr = paste("list('", p, "'=c(-Inf, ", thresh[i], "))", sep = "")
@@ -59,7 +75,7 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
   
   # calculate false positives
   if (verbose) {cat("false pos... ")}
-  ffg = Subset(ffp$ffOrig, flowCore::rectangleGate("SSC-A" = c(-Inf, size.thresh)))
+  ffg = Subset(thing_to_plot$ffOrig, flowCore::rectangleGate("SSC-A" = c(-Inf, size.thresh)))
   res_fp = remove.background.events(ffg, pgate, verbose = verbose)
   ffg = res_fp$ff
   
@@ -68,16 +84,14 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
     if (show.fn != "") {
       png(filename = show.fn, width = 1200, height = 800)
     }
-    laymat = matrix(c(1,2,3,4,5,6,7,0,8,9,10,0), byrow = TRUE, ncol = 4)
-    layout(laymat)
+    #laymat = matrix(c(1,2,3,4,5,6,7,0,8,9,10,0), byrow = TRUE, ncol = 4)
+    #layout(laymat)
     par(mar = c(2, 2.5, 3, 1))
     for (i in 1:length(nona_parameters)) {
       
       #will contain name and description from the one antibody
-      plottitle = paste(colnames(ffp$ffOrig)[nona_parameters[i]],parameters(ffp$ffOrig)[nona_parameters[i]]$desc)
-      #pplot(ff, c(p, "SSC-A"), xlim = c(-.5, flowFramePlus:::bx(5000)), main = p)
-      #ffp$plot()
-      ffp$plot(plist=c(p,"SSC-A"), xlim = c(-.5, flowFramePlus:::bx(5000)), main = plottitle)
+      plottitle = paste(colnames(thing_to_plot$ffOrig)[nona_parameters[i]],parameters(thing_to_plot$ffOrig)[nona_parameters[i]]$desc)
+      thing_to_plot$plot(plist=c(p,"SSC-A"), xlim = c(-.5, flowFramePlus:::bx(5000)), main = plottitle)
       left.edge = -2
       polygon(x = c(left.edge,thresh[i], 
                     thresh[i], 
@@ -99,16 +113,6 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
       tgde = cytovasTools:::normalize_kde(gde[[i]])
       lines(tgde$x, 2.5 * tgde$y, col = 'red')
       text(flowFramePlus:::bx(300), flowFramePlus:::bx(300), labels = sprintf("fp = %d (%.3f%%)", res_fp$n_fp[i], 100 * res_fp$n_fp[i] / res_fp$n_total), pos = 4, cex = 2)
-      #       points(exprs(ffg)[,names(thresh)[i]], 
-      #              exprs(ffg)[,"SSC-A"], 
-      #              pch = 20, 
-      #              cex = .3)
-      #       if (p == "CD47") {
-      #         polygon(xp.pe, yp.pe, col='#0000000F')
-      #       }
-      #       if (p == "AV") {
-      #         polygon(xp.v500, yp.v500, col='#0000000F')
-      #       }
     }
     if (show.fn != "") { 
       dev.off()
@@ -117,20 +121,18 @@ thresholds.from.triton = function(ffp, folderID=NA, fn=NA,
     # clean up memory
     rm(ffp, tmp)
   }
-  return(list(thresh = thresh, kde = kde, pgate = pgate, ngate = ngate, fp = ffg))
+  return(list(thresh = thresh, kde = kde, pgate = pgate, ngate = ngate, fp = ffg, detectors = detectors))
 }
 
+get_antibodies<-function(ffp){
+  nona_parameters<-which(!is.na(parameters(ffp$ffOrig)$desc))
+  
+  colnames(ffp$ffOrig)[nona_parameters[i]]
+  
+  return(nona_parameters)
+}
 # use positivity thresholds to gate out events that are negative for all colors
 remove.background.events = function(ff, gate, verbose=FALSE) {
-  
-  # make the OR combination of all of the gates in the list of gates - THIS IS VERRRY SLOOOOW...
-  #   pgate = gate[[1]]
-  #   for (i in 2:length(gate)) {
-  #     pgate = pgate | gate[[i]]
-  #   }
-  #   
-  #   out = Subset (ff, pgate)
-  
   nev = nrow(ff)
   bvec = rep(FALSE, length.out = nev)
   fp = vector(mode = 'numeric')

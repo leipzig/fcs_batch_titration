@@ -34,6 +34,8 @@ rule titer_check:
            V450 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["V450"],keep_local=True),
            V500 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["V500"],keep_local=True),
            unstained = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["unstained"],keep_local=True),
+           subsequent = s3_boto2.remote(expand("{bucket}/{dataset}", bucket=FCS_BUCKET, dataset=config["subsequent_files"]),keep_local=True)
+           
     output: html = s3_boto2.remote(REPORT_BUCKET+"/"+config["output_file"])
     params: projdir = "./", report_type=config["analysis_type"]
     run: 

@@ -22,6 +22,10 @@ with open('config.yaml', 'wb') as data:
 
 configfile: "config.yaml"
 
+fullystained = [config['subsequent_files'][x]['fullystained'] for x in list(config['subsequent_files'].keys()) ]
+unstained = [config['subsequent_files'][x]['unstained'] for x in list(config['subsequent_files'].keys()) ]
+
+
 rule titer_check:
     input: titercheck = 'batchTitration/inst/rmarkdown/titercheckReport.Rmd',
            titration = 'batchTitration/inst/rmarkdown/titrationReport.Rmd',
@@ -34,8 +38,9 @@ rule titer_check:
            V450 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["V450"],keep_local=True),
            V500 = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["V500"],keep_local=True),
            unstained = s3_boto2.remote(FCS_BUCKET+"/"+config["reference_files"]["unstained"],keep_local=True),
-           subsequent = s3_boto2.remote(expand("{bucket}/{dataset}", bucket=FCS_BUCKET, dataset=config["subsequent_files"]),keep_local=True)
-           
+           subsequent_unstained = s3_boto2.remote(expand("{bucket}/{dataset}", bucket=FCS_BUCKET, dataset=unstained),keep_local=True),
+           subsequent_fullystained = s3_boto2.remote(expand("{bucket}/{dataset}", bucket=FCS_BUCKET, dataset=fullystained),keep_local=True)
+
     output: html = s3_boto2.remote(REPORT_BUCKET+"/"+config["output_file"])
     params: projdir = "./", report_type=config["analysis_type"]
     run: 
@@ -51,3 +56,21 @@ rule titer_check:
         os.rename(params.projdir+'/'+html[params.report_type],output.html)
 
 #rmarkdown::render(md[["{params.report_type}"]], output_format='html_document',output_file="{output.html}")
+
+# analysis_type: titer_check
+# project_name: bms_ev_titers
+# output_file: my_titer_check_march.html
+# reference_files:
+#   AF647:      b16778c6-2ce3-4d75-9a1c-e1d24f9e7a3d.fcs
+#   APC_H7:     84f518fb-ba4e-4504-bfca-216260f9a508.fcs
+#   APC_R700:   5dd61240-c0fa-4a1d-b167-93c61fa0fae7.fcs
+#   PE:         86170f44-9979-4eae-9cc3-3f117c28efe0.fcs
+#   PE_Cy7:     44d1fcc2-dbad-4edb-bc1a-f14f907834e8.fcs
+#   PerCP_Cy55: 12f572a0-1ecf-422d-b6ac-befbe0079ac1.fcs
+#   V450:       84c565a7-f6cd-41ef-a3c2-78ae4352e688.fcs
+#   V500:       01b75bb5-6d6d-4ada-9731-22337891f06a.fcs
+#   unstained: 41c3516e-527f-419d-b5bb-7c317b185427.fcs
+# subsequent_files:
+#   buzzers hatmaker:
+#     unstained: 71f0d3a2-25cd-4747-861d-a8fd1092cad0.fcs
+#     fullystained: ee203197-3f16-4f38-af84-fda03748e331.fcs

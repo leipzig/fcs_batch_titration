@@ -7,9 +7,12 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/leipzig/R/batch_titration_docker/')
 library(cytovasTools)
 library(flowFramePlus)
+library(flowCore)
 library(yaml)
+library(magrittr)
 ```
 
 ## Titer Check
@@ -18,7 +21,13 @@ The titer check is designed to detect two events:
 - Depletion of antibody 
 - Accumulation of rocks
 
-```{r depletionSetup}
+A reference set of individually stained 
+
+Unstained control buffer but not antibody
+
+Stained buffer (not plasma), now at 200mw, can be used for both depletion and rocks analysis. Any signal coming from above the background (established from `unstained`) is aggregated antibody. 
+
+```{r configSetup}
 # assume they are interested in any parameter that has an antibody
 config<-yaml.load_file("config.yaml")
 flowFrames<-list('ref'=list(),'sub'=list())
@@ -27,33 +36,58 @@ thresholds<-list('ref'=list(),'sub'=list())
 detectors<-list('ref'=list(),'sub'=list())
 uuids<-list('ref'=list(),'sub'=list())
 shortnames<-list('ref'=list(),'colored'=list())
+```
 
+```{r metasetup}
 #[1] "AF647"      "APC_H7"     "APC_R700"   "PE"         "PE_Cy7"     "PerCP_Cy55" "V450"       "V500"       "unstained" 
 shortnames[['ref']]<-names(config$reference_files)
 uuids[['ref']]<-as.character(config$reference_files[names(config$reference_files)])
 
 filelists<-list('ref'=list(),'sub'=list())
 filelists[['ref']]<-config$reference_files
-filelists[['sub']]<-config$subsequent_files
+
+#names(filelists[['sub']])
+
+#todo: handle multiple subsequent submissions
+#filelists[['sub']]<-config$subsequent_files
+filelists[['sub']]<-config$subsequent_files[[1]]
+
 
 extractFcsMetadata<-function(fcsuuid){
+  fcsdf<-data.frame(uuid=fcsuuid)
   ffp<-flowFramePlus$new(paste("cytovas-instrument-files",fcsuuid,sep="/"))
-  meta<-description(ffp$ffOrig)[c('EXPERIMENT NAME','$FIL','$DATE','EXPORT TIME','GUID')]
+  meta<-flowCore::description(ffp$ffOrig)[c('EXPERIMENT NAME','$FIL','$DATE','EXPORT TIME','GUID')]
   names(meta)<-c("expName","fileName","date","exportTime","GUID")
-  return(meta)
+  meta$parsedDate<-format(lubridate::dmy_hms(meta$exportTime),"%Y-%m-%d")
+  return(cbind(fcsdf,data.frame(meta)))
 }
 
+```
+
+
+## FCS Metadata
+```{r fcsmeta}
+rbind(plyr::ldply(filelists$ref,extractFcsMetadata),plyr::ldply(filelists$sub,extractFcsMetadata)) %>% dplyr::select(.id,uuid,expName,fileName,date) -> displaymeta
+knitr::kable(displaymeta)
+```
+
+
 #the subsequent files are not named by anything useful, so extract their date of creation
-names(filelists[['sub']])<-paste("sub",sapply(lapply(filelists[['sub']],extractFcsMetadata),'[[','date'),sep='_')
+#names(filelists[['sub']])<-paste("sub",sapply(lapply(filelists[['sub']],extractFcsMetadata),'[[','parsedDate'),sep='_')
 
-
+```{r getThresholds}
 #a cohort refers to the reference(ref) or subsequent(sub) files
 getThresholds<-function(cohort){
   for(shortname in names(filelists[[cohort]])){
     cat(shortname,"\n")
-    flowFrames[[cohort]][[shortname]]<-flowFramePlus$new(paste("cytovas-instrument-files",filelists[[cohort]][[shortname]],sep="/"))
+    flowFrames[[cohort]][[shortname]]<<-flowFramePlus$new(paste("cytovas-instrument-files",filelists[[cohort]][[shortname]],sep="/"))
+    
+    #do I apply compensation to multistained?
+    #no spillover matrix was collected
+    #for ev's the spillover occurs near high SSC levels and we can ignore it
+    
     isUnstained<-(shortname=='unstained')
-    thresholdsObjects[[cohort]][[shortname]]<<-thresholds.from.triton(flowFrames[[cohort]][[shortname]],show=FALSE,unstained=isUnstained)
+    thresholdsObjects[[cohort]][[shortname]]<<-thresholds.from.triton(flowFrames[[cohort]][[shortname]],unstained=isUnstained)
     thresholds[[cohort]][[shortname]]<<-thresholdsObjects[[cohort]][[shortname]][['thresh']]
     detectors[[cohort]][[shortname]]<<-thresholdsObjects[[cohort]][[shortname]][['detectors']]
   }
@@ -64,44 +98,57 @@ getThresholds('ref')
 getThresholds('sub')
 
 #[1] "670/30 Red-A"    "780/60 Red-A"    "712/21 Red-A"    "575/25 Blue-A"   "780/60 Blue-A"   "695/40 Blue-A"   "450/50 Violet-A" "525/50 Violet-A"
-colors<-as.character(detectors[['ref']][names(detectors[['ref']])!="unstained"])
+wavelengths<-as.character(detectors[['ref']][names(detectors[['ref']])!="unstained"])
 
 #[1] "AF647"      "APC_H7"     "APC_R700"   "PE"         "PE_Cy7"     "PerCP_Cy55" "V450"       "V500"   
-shortnames['colored']<-names(detectors[['ref']][names(detectors[['ref']])!="unstained"])
-
-for(subsequent in names(config$subsequent)){
-  cat(ref)
-  flowFrames$ref[[ref]]<-flowFramePlus$new(paste("cytovas-instrument-files",config$reference_files[[ref]],sep="/"))
-  isUnstained<-(ref=='unstained')
-  thresholdsObjects$ref[[ref]]<-thresholds.from.triton(flowFrames$ref[[ref]],show=FALSE,unstained=isUnstained)
-  thresholds$ref[[ref]]<-thresholdsObjects$ref[[ref]][['thresh']]
-  detectors$ref[[ref]]<-thresholdsObjects$ref[[ref]][['detectors']]
-}
-
+shortnames[['colored']]<-names(detectors[['ref']][names(detectors[['ref']])!="unstained"])
 
 ```
 
 ## Conjugate table
-```{r depletion}
-knitr::kable(col.names=shortnames[['colored']],rbind(colors))
+```{r conjugate}
+knitr::kable(col.names=shortnames[['colored']],rbind(wavelengths))
 ```
 
 ## Depletion analysis
 ```{r depletion}
-knitr::kable(col.names=c("sample",names(refdetectors[names(refdetectors)!="unstained"])),
-             as.data.frame(rbind(cbind("unstained",do.call(rbind,list(as.numeric(refthresholds$unstained[colors])))),
-                                 cbind("single-stained",do.call(rbind,list(as.numeric(refthresholds[shortnames])))))))
+
+#unstained (plasma but no antibody)
+unstained_df<-data.frame(do.call(rbind,list(as.numeric(thresholds$ref$unstained[wavelengths]))))
+names(unstained_df)<-shortnames$colored
+row.names(unstained_df)<-"reference unstained (UA)"
+
+singlestained_df<-data.frame(do.call(rbind,list(as.numeric(thresholds$ref[shortnames$colored]))))
+names(singlestained_df)<-shortnames$colored
+row.names(singlestained_df)<-"reference single-stained (SS)"
+
+#the wavelength order is totally different
+#multistained_df<-t(data.frame(thresholds$sub))[,wavelengths]
+multistained_df<-data.frame(t(data.frame(thresholds$sub$fullystained)),check.names = FALSE)[,wavelengths]
+row.names(multistained_df)<-"subsequent fully-stained (FS)"
+
+#this assumes the conjugates/wavelengths are in the same order, can we guarantee this?
+names(multistained_df)<-shortnames[['colored']]
+
+sampleTable<-rbind(singlestained_df,unstained_df)
+
+sampleTable["unboundAntibody (SS-UA)",]<-sampleTable[1,]-sampleTable[2,] #ss-ua
+sampleTable<-rbind(sampleTable,multistained_df)
+
+
+#stained (plasma + antibody)
+knitr::kable(sampleTable, digits = 3)
+
+#plot
+ggTable<-sampleTable
+ggTable$sample<-row.names(ggTable)
+
 ```
 
-## Longitudinal plot
+## Rocks
+```{r rocks, warning=FALSE}
+plot_all_conjugates_vs_ssc(flowFrames$sub$fullystained)
 
-Plot signal on y and flourescent on x
-
-To estiamte the width of the background, take a horizontal strip
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+#anything to the right of the threshold
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

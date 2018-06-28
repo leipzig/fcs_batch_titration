@@ -1,6 +1,9 @@
 # What is this
 batch-titration is a container allows for one or more fcs files to be automatically processed (using AWS Batch or other runners). It consists of an R package, some scripts, and a Dockerfile. It produces an html document.
 
+This software was presented in our TiterCheck poster at CYTO2018
+https://figshare.com/articles/Method_for_Monitoring_Status_of_Antibody-Fluorochrome_Conjugates_For_Accurate_Enumeration_of_Extracellular_Vesicles/6719837
+
 # How to dockerize batch-titration
 ```
 devtools::build()

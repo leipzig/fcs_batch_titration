@@ -1,5 +1,5 @@
 # What is this
-batch-titration is a container allows for one or more fcs files to be automatically processed (using AWS Batch or other runners). It consists of and R packages, some scripts, and a Dockerfile. It produces an html document.
+batch-titration is a container allows for one or more fcs files to be automatically processed (using AWS Batch or other runners). It consists of an R package, some scripts, and a Dockerfile. It produces an html document.
 
 # How to dockerize batch-titration
 ```
